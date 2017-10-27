@@ -1,4 +1,5 @@
 #include "EGLWindowObject.hh"
+#include "v8-helpers.hh"
 
 namespace node_angle {
 
@@ -6,6 +7,8 @@ namespace node_angle {
     auto tpl = Nan::New<v8::FunctionTemplate>(New);
     tpl->SetClassName(Nan::New("Window").ToLocalChecked());
     tpl->InstanceTemplate()->SetInternalFieldCount(1);
+
+    Nan::SetPrototypeMethod(tpl, "swapBuffers", swapBuffers);
 
     Nan::Set(
       target,
@@ -20,7 +23,7 @@ namespace node_angle {
   }
 
   EGLWindowObject::EGLWindowObject(
-    std::unique_ptr<OSWindow> osWindow
+      std::unique_ptr<OSWindow> osWindow
     , std::unique_ptr<EGLWindow> eglWindow
   )
     : osWindow_{ std::move(osWindow) }
@@ -31,14 +34,29 @@ namespace node_angle {
 
 #define METHOD(name) NAN_METHOD(EGLWindowObject::name)
 
+METHOD(swapBuffers) {
+  Unwrap<EGLWindowObject>(info.This())->eglWindow_->swap();
+}
+
 METHOD(New) {
   if (!info.IsConstructCall()) {
-    return Nan::ThrowError("EGLWindow must be called with new.");
+    return Nan::ThrowError("gl.Window must be called with new.");
   }
+
+  auto args = !info.Length()
+    ? Nan::New<v8::Object>()
+    : Nan::To<v8::Object>(info[0]);
+  auto titleLocal = ToLocalOrDefault(
+    MaybeGet(args, "title"),
+    Nan::New("ANGLE Window").ToLocalChecked());
+  auto width = ToJustOrDefault(MaybeGet(args, "width"), 1280);
+  auto height = ToJustOrDefault(MaybeGet(args, "height"), 720);
 
   auto osWindow = std::unique_ptr<OSWindow>(CreateOSWindow());
 
-  if (!osWindow->initialize("My first EGLWindow!", 1280, 720)) {
+  auto title = V8StringToUTF8StdString(titleLocal);
+
+  if (!osWindow->initialize(title, width, height)) {
     return Nan::ThrowError("Failed to initialize OS window.");
   }
 
@@ -50,12 +68,15 @@ METHOD(New) {
     glesMinorVersion,
     EGLPlatformParameters{});
 
+  eglWindow->setDebugEnabled(true);
+  eglWindow->setDebugLayersEnabled(true);
   eglWindow->setConfigRedBits(8);
   eglWindow->setConfigGreenBits(8);
   eglWindow->setConfigBlueBits(8);
   eglWindow->setConfigAlphaBits(8);
   eglWindow->setConfigDepthBits(24);
   eglWindow->setConfigStencilBits(8);
+  eglWindow->setWebGLCompatibilityEnabled(true);
 
   if (!eglWindow->initializeGL(osWindow.get())) {
     return Nan::ThrowError("Failed to initialize EGL.");
@@ -80,16 +101,6 @@ METHOD(New) {
   obj->osWindow_->setVisible(true);
 
   info.GetReturnValue().Set(info.This());
-}
-
-METHOD(Close) {
-  osWindow_->pushEvent(Event{ Event::EVENT_CLOSED });
-}
-
-METHOD(Destroy) {
-  if (!closed_) {
-    destroy_impl();
-  }
 }
 
 void EGLWindowObject::idle_impl() {

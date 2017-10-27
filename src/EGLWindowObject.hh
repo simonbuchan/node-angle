@@ -28,9 +28,9 @@ private:
   uv_idle_t uv_idle_;
   bool closed_;
 
+  static NAN_METHOD(swapBuffers);
+
   static NAN_METHOD(New);
-  NAN_METHOD(Close);
-  NAN_METHOD(Destroy);
 
   void idle_impl();
   void destroy_impl();
