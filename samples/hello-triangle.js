@@ -1,4 +1,7 @@
-const gl = require('./');
+// Based on angle/samples/hello-triangle and code from https://webglfundamentals.org
+// See angle/LICENSE
+
+const gl = require('../');
 
 function main() {
   const width = 800;
