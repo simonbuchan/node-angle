@@ -35,6 +35,8 @@ function main() {
   ];
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
+  gl.clearColor(0, 0, 0, 0);
+
   win.on('resized', resized);
   win.on('preswap', render);
 
@@ -45,7 +47,6 @@ function main() {
 
   function render() {
     // console.log('render', win.width, win.height);
-    gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.useProgram(program);

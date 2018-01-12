@@ -152,12 +152,31 @@ NAN_METHOD(clearColor) {
   ARG_JUST(1, double, green);
   ARG_JUST(2, double, blue);
   ARG_JUST(3, double, alpha);
-  glClearColor(red, green, blue, alpha);
+  glClearColor(
+    static_cast<float>(red),
+    static_cast<float>(green),
+    static_cast<float>(blue),
+    static_cast<float>(alpha));
 }
 
 NAN_METHOD(clear) {
   ARG_JUST(0, uint32_t, mask);
   glClear(mask);
+}
+
+NAN_METHOD(cullFace) {
+  ARG_JUST(0, int32_t, mode);
+  glCullFace(mode);
+}
+
+NAN_METHOD(enable) {
+  ARG_JUST(0, int32_t, cap);
+  glEnable(cap);
+}
+
+NAN_METHOD(disable) {
+  ARG_JUST(0, int32_t, cap);
+  glDisable(cap);
 }
 
 NAN_METHOD(createBuffer) {
@@ -182,9 +201,6 @@ NAN_METHOD(bufferData) {
     return Nan::ThrowTypeError("Arg 'bufferData' must be any ArrayBufferView (e.g. Float32Array)");
   }
 
-  auto view = bufferData.As<v8::ArrayBufferView>();
-  size_t size = view->ByteLength();
-  void* data = static_cast<char*>(view->Buffer()->GetContents().Data()) + view->ByteOffset();
   glBufferData(target, contents.length(), *contents, usage);
 }
 
@@ -192,6 +208,31 @@ NAN_METHOD(getAttribLocation) {
   ARG_JUST(0, int32_t, program);
   ARG_STRING(1, name);
   auto location = glGetAttribLocation(program, name.c_str());
+  info.GetReturnValue().Set(location);
+}
+
+NAN_METHOD(uniformMatrix) {
+  ARG_JUST(0, int32_t, location);
+  ARG_JUST(1, int32_t, count);
+  ARG_JUST(2, bool, transpose);
+  ARG_LOCAL(3, v8::Object, matrix);
+
+  if (!matrix->IsFloat32Array()) {
+    return Nan::ThrowTypeError("Arg 'matrix' must be Float32Array.");
+  }
+
+  Nan::TypedArrayContents<float> contents{ matrix };
+  if (contents.length() != 16) {
+    return Nan::ThrowTypeError("Arg 'matrix' must have length 16.");
+  }
+
+  glUniformMatrix4fv(location, count, transpose, *contents);
+}
+
+NAN_METHOD(getUniformLocation) {
+  ARG_JUST(0, int32_t, program);
+  ARG_STRING(1, name);
+  auto location = glGetUniformLocation(program, name.c_str());
   info.GetReturnValue().Set(location);
 }
 
@@ -206,7 +247,7 @@ NAN_METHOD(vertexAttribPointer) {
   ARG_JUST(2, int32_t, type);
   ARG_JUST(3, bool, normalized);
   ARG_JUST(4, int32_t, stride);
-  ARG_JUST(5, int32_t, offset);
+  ARG_JUST(5, intptr_t, offset);
   glVertexAttribPointer(
     location,
     size,
@@ -221,6 +262,14 @@ NAN_METHOD(drawArrays) {
   ARG_JUST(1, int32_t, first);
   ARG_JUST(2, int32_t, count);
   glDrawArrays(mode, first, count);
+}
+
+NAN_METHOD(drawElements) {
+  ARG_JUST(0, int32_t, mode);
+  ARG_JUST(1, int32_t, count);
+  ARG_JUST(2, int32_t, type);
+  ARG_JUST(3, intptr_t, offset);
+  glDrawElements(mode, count, type, reinterpret_cast<void*>(offset));
 }
 
 NAN_MODULE_INIT(InitAll) {
@@ -242,6 +291,9 @@ NAN_MODULE_INIT(InitAll) {
   NAN_EXPORT(target, viewport);
   NAN_EXPORT(target, clearColor);
   NAN_EXPORT(target, clear);
+  NAN_EXPORT(target, cullFace);
+  NAN_EXPORT(target, enable);
+  NAN_EXPORT(target, disable);
 
   NAN_EXPORT(target, createBuffer);
   NAN_EXPORT(target, bindBuffer);
@@ -250,8 +302,11 @@ NAN_MODULE_INIT(InitAll) {
   NAN_EXPORT(target, enableVertexAttribArray);
   NAN_EXPORT(target, vertexAttribPointer);
   NAN_EXPORT(target, getAttribLocation);
+  NAN_EXPORT(target, uniformMatrix);
+  NAN_EXPORT(target, getUniformLocation);
 
   NAN_EXPORT(target, drawArrays);
+  NAN_EXPORT(target, drawElements);
 
   EXPORT_GL_CONSTANT(target, VERTEX_SHADER);
   EXPORT_GL_CONSTANT(target, FRAGMENT_SHADER);
@@ -262,12 +317,17 @@ NAN_MODULE_INIT(InitAll) {
   EXPORT_GL_CONSTANT(target, COLOR_BUFFER_BIT);
 
   EXPORT_GL_CONSTANT(target, ARRAY_BUFFER);
+  EXPORT_GL_CONSTANT(target, ELEMENT_ARRAY_BUFFER);
   EXPORT_GL_CONSTANT(target, STATIC_DRAW);
 
   #undef FLOAT
   EXPORT_GL_CONSTANT(target, FLOAT);
+  EXPORT_GL_CONSTANT(target, UNSIGNED_SHORT);
 
   EXPORT_GL_CONSTANT(target, TRIANGLES);
+
+  EXPORT_GL_CONSTANT(target, BACK);
+  EXPORT_GL_CONSTANT(target, CULL_FACE);
 
   EGLWindowObject::Init(target);
 }
