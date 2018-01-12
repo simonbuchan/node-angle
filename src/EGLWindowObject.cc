@@ -103,20 +103,47 @@ METHOD(New) {
   info.GetReturnValue().Set(info.This());
 }
 
+void emit(v8::Local<v8::Object> self, const char* name, std::initializer_list<v8::Local<v8::Value>> args)
+{
+  std::vector<v8::Local<v8::Value>> emitArgs;
+  emitArgs.push_back(Nan::New(name).ToLocalChecked());
+  std::copy(std::begin(args), std::end(args), std::back_inserter(emitArgs));
+  Nan::MakeCallback(self, "emit", std::size(emitArgs), std::data(emitArgs));
+}
+
 void EGLWindowObject::idle_impl() {
   assert(!closed_);
 
+  osWindow_->messageLoop();
+
+  bool resized = false;
+
   Event event;
   while (osWindow_->popEvent(&event)) {
-    // TODO: dispatch node events
     switch (event.Type) {
-    case Event::EVENT_CLOSED:
-      closed_ = true;
-      break;
+    case Event::EVENT_RESIZED: resized = true; break; // FIXME: messageLoop() queues these resizes up, which is totally pointless!
+    case Event::EVENT_CLOSED: closed_ = true; break;
     }
   }
 
-  osWindow_->messageLoop();
+  if (!closed_) {
+    Nan::HandleScope scope;
+    if (resized) {
+      auto width = Nan::New(osWindow_->getWidth());
+      auto height = Nan::New(osWindow_->getHeight());
+
+      auto widthName = Nan::New("width").ToLocalChecked();
+      auto heightName = Nan::New("height").ToLocalChecked();
+
+      Nan::Set(handle(), widthName, width);
+      Nan::Set(handle(), heightName, height);
+      emit(handle(), "resized", { width, height });
+    }
+
+    emit(handle(), "preswap", {});
+    eglWindow_->swap();
+    emit(handle(), "postswap", {});
+  }
 
   if (closed_) {
     destroy_impl();
