@@ -5,19 +5,6 @@
 
 namespace node_angle {
 
-static const auto constAttribute =
-  static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontDelete);
-
-#define EXPORT_GL_CONSTANT(target, name)       \
-do {                                           \
-  Nan::HandleScope scope;                      \
-  Nan::ForceSet(                               \
-    target,                                    \
-    Nan::New(#name).ToLocalChecked(),          \
-    Nan::New(GL_##name),                       \
-    constAttribute);                           \
-} while (0)
-
 #define ARG_JUST(index, type, name)               \
   auto name##Maybe = Nan::To<type>(info[index]);  \
   if (name##Maybe.IsNothing()) {                  \
@@ -48,16 +35,6 @@ NAN_METHOD(shaderSource) {
 
   auto sourceArray = { source.data() };
   glShaderSource(shader, std::size(sourceArray), std::data(sourceArray), nullptr);
-}
-
-NAN_METHOD(compileShader) {
-  ARG_JUST(0, int32_t, shader);
-  glCompileShader(shader);
-}
-
-NAN_METHOD(deleteShader) {
-  ARG_JUST(0, int32_t, shader);
-  glDeleteShader(shader);
 }
 
 NAN_METHOD(getShaderParameter) {
@@ -92,27 +69,6 @@ NAN_METHOD(createProgram) {
   info.GetReturnValue().Set(result);
 }
 
-NAN_METHOD(attachShader) {
-  ARG_JUST(0, int32_t, program);
-  ARG_JUST(1, int32_t, shader);
-  glAttachShader(program, shader);
-}
-
-NAN_METHOD(linkProgram) {
-  ARG_JUST(0, int32_t, program);
-  glLinkProgram(program);
-}
-
-NAN_METHOD(deleteProgram) {
-  ARG_JUST(0, int32_t, program);
-  glDeleteProgram(program);
-}
-
-NAN_METHOD(useProgram) {
-  ARG_JUST(0, int32_t, program);
-  glUseProgram(program);
-}
-
 NAN_METHOD(getProgramParameter) {
   ARG_JUST(0, int32_t, program);
   ARG_JUST(1, int32_t, pname);
@@ -139,14 +95,6 @@ NAN_METHOD(getProgramInfoLog) {
   info.GetReturnValue().Set(Nan::New(buffer.data()).ToLocalChecked());
 }
 
-NAN_METHOD(viewport) {
-  ARG_JUST(0, int32_t, x);
-  ARG_JUST(1, int32_t, y);
-  ARG_JUST(2, int32_t, width);
-  ARG_JUST(3, int32_t, height);
-  glViewport(x, y, width, height);
-}
-
 NAN_METHOD(clearColor) {
   ARG_JUST(0, double, red);
   ARG_JUST(1, double, green);
@@ -164,31 +112,10 @@ NAN_METHOD(clear) {
   glClear(mask);
 }
 
-NAN_METHOD(cullFace) {
-  ARG_JUST(0, int32_t, mode);
-  glCullFace(mode);
-}
-
-NAN_METHOD(enable) {
-  ARG_JUST(0, int32_t, cap);
-  glEnable(cap);
-}
-
-NAN_METHOD(disable) {
-  ARG_JUST(0, int32_t, cap);
-  glDisable(cap);
-}
-
 NAN_METHOD(createBuffer) {
   GLuint buffer;
   glGenBuffers(1, &buffer);
   info.GetReturnValue().Set(buffer);
-}
-
-NAN_METHOD(bindBuffer) {
-  ARG_JUST(0, int32_t, target);
-  ARG_JUST(1, uint32_t, buffer);
-  glBindBuffer(target, buffer);
 }
 
 NAN_METHOD(bufferData) {
@@ -236,11 +163,6 @@ NAN_METHOD(getUniformLocation) {
   info.GetReturnValue().Set(location);
 }
 
-NAN_METHOD(enableVertexAttribArray) {
-  ARG_JUST(0, int32_t, location);
-  glEnableVertexAttribArray(location);
-}
-
 NAN_METHOD(vertexAttribPointer) {
   ARG_JUST(0, int32_t, location);
   ARG_JUST(1, int32_t, size);
@@ -257,13 +179,6 @@ NAN_METHOD(vertexAttribPointer) {
     reinterpret_cast<void*>(offset));
 }
 
-NAN_METHOD(drawArrays) {
-  ARG_JUST(0, int32_t, mode);
-  ARG_JUST(1, int32_t, first);
-  ARG_JUST(2, int32_t, count);
-  glDrawArrays(mode, first, count);
-}
-
 NAN_METHOD(drawElements) {
   ARG_JUST(0, int32_t, mode);
   ARG_JUST(1, int32_t, count);
@@ -272,62 +187,32 @@ NAN_METHOD(drawElements) {
   glDrawElements(mode, count, type, reinterpret_cast<void*>(offset));
 }
 
+#include "simple_commands_def.inl"
+
 NAN_MODULE_INIT(InitAll) {
   NAN_EXPORT(target, createShader);
   NAN_EXPORT(target, shaderSource);
-  NAN_EXPORT(target, compileShader);
-  NAN_EXPORT(target, deleteShader);
   NAN_EXPORT(target, getShaderParameter);
   NAN_EXPORT(target, getShaderInfoLog);
 
   NAN_EXPORT(target, createProgram);
-  NAN_EXPORT(target, attachShader);
-  NAN_EXPORT(target, linkProgram);
-  NAN_EXPORT(target, deleteProgram);
-  NAN_EXPORT(target, useProgram);
   NAN_EXPORT(target, getProgramParameter);
   NAN_EXPORT(target, getProgramInfoLog);
 
-  NAN_EXPORT(target, viewport);
   NAN_EXPORT(target, clearColor);
   NAN_EXPORT(target, clear);
-  NAN_EXPORT(target, cullFace);
-  NAN_EXPORT(target, enable);
-  NAN_EXPORT(target, disable);
 
   NAN_EXPORT(target, createBuffer);
-  NAN_EXPORT(target, bindBuffer);
   NAN_EXPORT(target, bufferData);
 
-  NAN_EXPORT(target, enableVertexAttribArray);
   NAN_EXPORT(target, vertexAttribPointer);
   NAN_EXPORT(target, getAttribLocation);
   NAN_EXPORT(target, uniformMatrix);
   NAN_EXPORT(target, getUniformLocation);
 
-  NAN_EXPORT(target, drawArrays);
   NAN_EXPORT(target, drawElements);
 
-  EXPORT_GL_CONSTANT(target, VERTEX_SHADER);
-  EXPORT_GL_CONSTANT(target, FRAGMENT_SHADER);
-
-  EXPORT_GL_CONSTANT(target, COMPILE_STATUS);
-  EXPORT_GL_CONSTANT(target, LINK_STATUS);
-
-  EXPORT_GL_CONSTANT(target, COLOR_BUFFER_BIT);
-
-  EXPORT_GL_CONSTANT(target, ARRAY_BUFFER);
-  EXPORT_GL_CONSTANT(target, ELEMENT_ARRAY_BUFFER);
-  EXPORT_GL_CONSTANT(target, STATIC_DRAW);
-
-  #undef FLOAT
-  EXPORT_GL_CONSTANT(target, FLOAT);
-  EXPORT_GL_CONSTANT(target, UNSIGNED_SHORT);
-
-  EXPORT_GL_CONSTANT(target, TRIANGLES);
-
-  EXPORT_GL_CONSTANT(target, BACK);
-  EXPORT_GL_CONSTANT(target, CULL_FACE);
+#include "simple_commands_init.inl"
 
   EGLWindowObject::Init(target);
 }
